@@ -1,7 +1,7 @@
 # Hockey Fight (Windows)
 
 A Windows screensaver featuring zamboni action. This is a port of the macOS
-screensaver in [`../macos`](../macos).
+screensaver by [sral/hockeyfight](https://github.com/sral/hockeyfight/)
 
 ![Screenshot](img/screenshot.png)
 
