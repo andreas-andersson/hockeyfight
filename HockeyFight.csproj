@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- HighDpiMode PerMonitorV2 lets us render at physical pixels and apply our
+         own integer scale factor, mirroring the Retina backing scale on macOS. -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationVisualStyles>true</ApplicationVisualStyles>
+    <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+
+    <AssemblyName>HockeyFight</AssemblyName>
+    <RootNamespace>HockeyFight</RootNamespace>
+    <!-- Windows shows FileDescription in the Screen Saver dropdown, and the .NET SDK
+         maps AssemblyTitle onto it. -->
+    <AssemblyTitle>Hockey Fight</AssemblyTitle>
+    <Product>Hockey Fight</Product>
+    <Description>A screensaver featuring zamboni action.</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\audience.png"   LogicalName="audience.png" />
+    <EmbeddedResource Include="Resources\flags.png"      LogicalName="flags.png" />
+    <EmbeddedResource Include="Resources\font.png"       LogicalName="font.png" />
+    <EmbeddedResource Include="Resources\net.png"        LogicalName="net.png" />
+    <EmbeddedResource Include="Resources\scoreboard.png" LogicalName="scoreboard.png" />
+    <EmbeddedResource Include="Resources\zamboni.png"    LogicalName="zamboni.png" />
+  </ItemGroup>
+
+</Project>
