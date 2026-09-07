@@ -1,0 +1,96 @@
+name: Release Windows screensaver
+
+# Publishing a GitHub release builds the screensaver and attaches it to that
+# release. The manual trigger builds the same file without touching any release,
+# which is the way to test a change to this workflow.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, e.g. 1.2.3"
+        required: true
+        default: "0.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build screensaver
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # The release tag is the source of truth for the version. It is read from
+      # the environment rather than interpolated into the script body so that a
+      # tag containing quotes cannot break out into the shell.
+      - name: Resolve version
+        id: version
+        env:
+          RAW_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
+        run: |
+          $version = $env:RAW_VERSION -replace '^[vV]', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') {
+            throw "Expected a version like 1.2.3 or v1.2.3, got '$env:RAW_VERSION'."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Building version $version"
+
+      # Self-contained, so the machine it lands on does not need a .NET runtime.
+      # IncludeNativeLibrariesForSelfExtract is what makes it a genuinely single
+      # file -- without it the native DLLs sit alongside, and the .scr stops
+      # working the moment it is copied somewhere on its own.
+      - name: Publish screensaver
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          dotnet publish HockeyFight.csproj `
+            -c Release `
+            -r win-x64 `
+            -o dist `
+            -p:PublishSingleFile=true `
+            -p:SelfContained=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=none `
+            -p:Version=$env:VERSION `
+            --nologo
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+          # Windows identifies a screensaver by its .scr extension. The name shown
+          # in the screen saver list comes from the file's description resource,
+          # not this filename.
+          $scr = "dist\HockeyFight-$env:VERSION.scr"
+          Move-Item dist\HockeyFight.exe $scr -Force
+
+          $size = [math]::Round((Get-Item $scr).Length / 1MB, 1)
+          Write-Host "Built $scr ($size MB)"
+          "- ``HockeyFight-$env:VERSION.scr`` ($size MB)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hockey-fight-${{ steps.version.outputs.version }}
+          path: dist/HockeyFight-*.scr
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$env:TAG" "dist\HockeyFight-$env:VERSION.scr" --clobber

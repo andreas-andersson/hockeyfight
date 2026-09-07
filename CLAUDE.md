@@ -28,11 +28,6 @@ Self-contained release into `release\`:
 .\build.ps1 -Task release
 ```
 
-Inno Setup installer into `dist\` (needs Inno Setup 6.3+ locally):
-```powershell
-.\build.ps1 -Task installer -Version 1.2.3
-```
-
 Uninstall, or clean build artifacts:
 ```powershell
 .\build.ps1 -Task uninstall
@@ -99,22 +94,19 @@ frame.
 - `src/Sprites.cs` — embedded sprite sheet loading
 - `src/NativeMethods.cs` — Win32 interop
 - `Resources/` — sprite sheets (copies of the macOS bundle's images)
-- `installer/HockeyFight.iss` — Inno Setup script for the release installer
 
 ## Releases
 
 `.github/workflows/release-windows.yml` (at the repository root) runs on
-`release: published`, builds a self-contained `.scr`, compiles the Inno Setup
-installer, and uploads both the installer and a portable zip to the release. It
-also has a `workflow_dispatch` trigger for testing changes without cutting a
-release.
+`release: published`, builds a self-contained single-file `.scr`, and uploads it
+to the release. It also has a `workflow_dispatch` trigger for testing changes
+without cutting a release.
 
-The version comes from the release tag, is validated against `1.2.3` /
-`v1.2.3`, and is passed to both `dotnet publish -p:Version=` and
-`ISCC /DAppVersion=`. Keep those two in step — the installer filename and the
-`.scr` version resource are expected to match.
+The version comes from the release tag, is validated against `1.2.3` / `v1.2.3`,
+and is passed to `dotnet publish -p:Version=`, which lands it in the `.scr`'s
+version resource.
 
-Release builds are always self-contained (~47 MB) so end users do not need the
-.NET runtime. That requires `IncludeNativeLibrariesForSelfExtract=true`, without
-which the single file leaves native DLLs beside it and the `.scr` will not run
-once it is copied into `System32` on its own.
+Release builds are self-contained (~47 MB) so end users do not need the .NET
+runtime. That requires `IncludeNativeLibrariesForSelfExtract=true`, without which
+the single file leaves native DLLs beside it and the `.scr` stops working as soon
+as it is copied somewhere on its own.
