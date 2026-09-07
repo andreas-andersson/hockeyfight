@@ -2,6 +2,10 @@ bin/
 obj/
 dist/
 
+# Self-contained builds are ~47 MB; releases are published by the GitHub
+# workflow rather than committed.
+release/
+
 # Visual Studio / Rider
 .vs/
 .idea/

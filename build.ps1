@@ -12,18 +12,23 @@
     .\build.ps1 -Task build         # build only, leave it in dist\
     .\build.ps1 -SelfContained      # bundle the .NET runtime into the .scr
     .\build.ps1 -Task release       # build self-contained into release\
+    .\build.ps1 -Task installer     # build the Inno Setup installer into dist\
     .\build.ps1 -Task uninstall     # remove it and clear the registry entry
     .\build.ps1 -Task clean
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('install', 'build', 'release', 'uninstall', 'clean')]
+    [ValidateSet('install', 'build', 'release', 'installer', 'uninstall', 'clean')]
     [string]$Task = 'install',
 
     [switch]$SelfContained,
 
     [ValidateSet('Debug', 'Release')]
-    [string]$Configuration = 'Release'
+    [string]$Configuration = 'Release',
+
+    # Stamped into the .scr's version resource and the installer filename.
+    [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')]
+    [string]$Version = '1.0.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -51,9 +56,14 @@ function Invoke-Publish {
         '-p:PublishSingleFile=true',
         "-p:SelfContained=$($Standalone.ToString().ToLowerInvariant())",
         '-p:DebugType=none',
+        "-p:Version=$Version",
         '--nologo', '-v', 'quiet'
     )
-    if ($Standalone) { $publishArgs += '-p:EnableCompressionInSingleFile=true' }
+    if ($Standalone) {
+        # Everything has to live inside the single .scr file, native bits included.
+        $publishArgs += '-p:IncludeNativeLibrariesForSelfExtract=true'
+        $publishArgs += '-p:EnableCompressionInSingleFile=true'
+    }
 
     & dotnet @publishArgs
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
@@ -99,6 +109,26 @@ function Invoke-Install {
     Write-Host "  & '$installed' /s"
 }
 
+function Invoke-Installer {
+    # The distributed installer is always self-contained: someone installing a
+    # screensaver should not have to install a .NET runtime first.
+    Invoke-Publish -OutDir $distDir -Standalone $true | Out-Null
+
+    $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+    if (-not (Test-Path $iscc)) {
+        throw "Inno Setup 6 not found at $iscc. Install it with 'winget install JRSoftware.InnoSetup' (6.3 or newer)."
+    }
+
+    $script = Join-Path $root 'installer\HockeyFight.iss'
+    & $iscc "/DAppVersion=$Version" $script
+    if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+
+    $setup = Join-Path $distDir "HockeyFight-$Version-setup.exe"
+    $size = [math]::Round((Get-Item $setup).Length / 1MB, 1)
+    Write-Host ''
+    Write-Host "Installer built: $setup  ($size MB)" -ForegroundColor Green
+}
+
 function Invoke-Uninstall {
     Get-Process -Name 'HockeyFight', 'Hockey Fight' -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
@@ -125,6 +155,7 @@ switch ($Task) {
         Write-Host "Built: $scr" -ForegroundColor Green
     }
     'install'   { Invoke-Install }
+    'installer' { Invoke-Installer }
     'release'   {
         $scr = Invoke-Publish -OutDir $releaseDir -Standalone $true
         Write-Host ''

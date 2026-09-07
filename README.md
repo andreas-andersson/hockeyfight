@@ -7,6 +7,20 @@ screensaver by [sral/hockeyfight](https://github.com/sral/hockeyfight/)
 
 ## Installation
 
+### Download a release
+
+Each published GitHub release has two attachments, neither of which needs the
+.NET runtime on the target machine:
+
+- **`HockeyFight-<version>-setup.exe`** — installs the screensaver into
+  `System32` so it appears in the Windows screen saver list for every user, and
+  can set it as the current screensaver. Needs administrator rights, and
+  uninstalls from Settings → Apps.
+- **`HockeyFight-<version>-portable.zip`** — just the `.scr`, for anyone who
+  would rather not run an installer.
+
+Both are self-contained, which puts the download at roughly 45 MB.
+
 ### Build and install
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
@@ -65,6 +79,13 @@ without the .NET runtime installed:
 .\build.ps1 -Task release
 ```
 
+Build the installer into `dist\` (requires
+[Inno Setup 6.3+](https://jrsoftware.org/isdl.php)):
+
+```powershell
+.\build.ps1 -Task installer -Version 1.2.3
+```
+
 Remove build artifacts:
 
 ```powershell
@@ -73,7 +94,19 @@ Remove build artifacts:
 
 By default the build is framework-dependent and the `.scr` is only ~200 KB, but
 it needs the **.NET 10 Desktop Runtime** on the machine. Pass `-SelfContained`
-to bundle the runtime instead.
+to bundle the runtime instead, which brings it to ~47 MB. The `release` and
+`installer` tasks are always self-contained.
+
+### Releases
+
+`.github/workflows/release-windows.yml` builds the installer and the portable
+zip and attaches them to the release. Publishing a GitHub release triggers it,
+taking the version from the tag (`v1.2.3` and `1.2.3` both work); the version is
+stamped into the `.scr`'s version resource and both filenames.
+
+The workflow also has a manual trigger that takes a version and produces the same
+files as workflow artifacts without touching any release — that is the way to
+test a change to it.
 
 ### Running it directly
 
@@ -144,4 +177,5 @@ for this; the renderer takes its size from `GetClientRect` instead.
 - `src/Sprites.cs` — loads the embedded sprite sheets
 - `src/NativeMethods.cs` — the Win32 calls the preview mode needs
 - `Resources/` — sprite sheets, embedded into the executable at build time
-- `build.ps1` — build, install, release and clean tasks
+- `installer/HockeyFight.iss` — Inno Setup script for the release installer
+- `build.ps1` — build, install, release, installer, uninstall and clean tasks
